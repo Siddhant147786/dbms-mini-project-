@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <header id="main-header"></header>
+
+    <main class="container">
+        <div class="form-container">
+            <h2>Administrator Login</h2>
+            <div id="login-message" class="message" style="display:none;"></div>
+            <form id="adminLoginForm">
+                <div class="form-group">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <button type="submit" class="button primary button-full-width">Login</button>
+            </form>
+            <p class="text-center mt-30">Are you a Student? <a href="student_login.html">Login here</a></p>
+        </div>
+    </main>
+
+    <footer id="main-footer"></footer>
+
+    <script src="assets/js/script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            renderHeader(false); // No logout on login page
+            renderFooter();
+
+            const loginForm = document.getElementById('adminLoginForm');
+            const messageElementId = 'login-message';
+
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const formData = {
+                    username: document.getElementById('username').value,
+                    password: document.getElementById('password').value,
+                };
+
+                const validationRules = {
+                    username: { required: true, label: 'Username' },
+                    password: { required: true, label: 'Password' },
+                };
+
+                const { isValid, errors } = validateForm('adminLoginForm', validationRules);
+
+                if (!isValid) {
+                    showMessage(messageElementId, errors.join('<br>'), 'error');
+                    return;
+                }
+
+                try {
+                    const response = await apiCall('/admin/login', 'POST', formData);
+                    if (response.status === 'success') {
+                        setSessionData('admin_id', response.admin_id || 1); // Store admin_id, assuming 1 for now if backend doesn't return
+                        showMessage(messageElementId, response.message, 'success');
+                        setTimeout(() => {
+                            window.location.href = 'admin_dashboard.html';
+                        }, 1000);
+                    } else {
+                        showMessage(messageElementId, response.message || 'Admin login failed.', 'error');
+                    }
+                } catch (error) {
+                    showMessage(messageElementId, error.message || 'An unexpected error occurred during admin login.', 'error');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

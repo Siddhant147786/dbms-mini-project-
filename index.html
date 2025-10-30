@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faculty Feedback System</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <header id="main-header"></header>
+
+    <main class="container hero-section">
+        <h1>Welcome to the Faculty Feedback System</h1>
+        <p>Your platform for streamlined faculty feedback management.</p>
+
+        <div class="role-selection">
+            <div class="role-card">
+                <h2>Student</h2>
+                <p>Provide valuable feedback on your teachers and subjects.</p>
+                <div class="button-group">
+                    <a href="student_login.html" class="button primary">Student Login</a>
+                    <a href="student_register.html" class="button secondary">Student Register</a>
+                </div>
+            </div>
+            <div class="role-card">
+                <h2>Administrator</h2>
+                <p>Manage teachers, view feedback summaries, and analyze data.</p>
+                <div class="button-group">
+                    <a href="admin_login.html" class="button primary">Admin Login</a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer id="main-footer"></footer>
+
+    <script src="assets/js/script.js"></script>
+    <script>
+        // Specific script for the home page if needed
+        document.addEventListener('DOMContentLoaded', () => {
+            renderHeader(false); // No logout on home page
+            renderFooter();
+        });
+    </script>
+</body>
+</html>

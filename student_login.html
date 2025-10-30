@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Login</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <header id="main-header"></header>
+
+    <main class="container">
+        <div class="form-container">
+            <h2>Student Login</h2>
+            <div id="login-message" class="message" style="display:none;"></div>
+            <form id="studentLoginForm">
+                <div class="form-group">
+                    <label for="roll_number">Roll Number:</label>
+                    <input type="text" id="roll_number" name="roll_number" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <button type="submit" class="button primary button-full-width">Login</button>
+            </form>
+            <p class="text-center mt-30">Don't have an account? <a href="student_register.html">Register here</a></p>
+            <p class="text-center">Are you an Admin? <a href="admin_login.html">Login here</a></p>
+        </div>
+    </main>
+
+    <footer id="main-footer"></footer>
+
+    <!-- All necessary JavaScript is now included directly in this file -->
+    <script>
+        // === Configuration ===
+        const API_BASE_URL = 'http://127.0.0.1:5000';
+
+        // === Utility Functions (self-contained) ===
+        function setSessionData(key, value) {
+            localStorage.setItem(key, JSON.stringify(value));
+        }
+
+        function showMessage(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.innerHTML = message;
+                element.className = `message ${type}`;
+                element.style.display = 'block';
+                setTimeout(() => { element.style.display = 'none'; }, 5000);
+            }
+        }
+
+        async function apiCall(endpoint, method = 'GET', data = null) {
+            const options = {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include'
+            };
+            if (data) {
+                options.body = JSON.stringify(data);
+            }
+            try {
+                const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error("API Call failed:", error);
+                throw error;
+            }
+        }
+
+        function validateForm(form, rules) {
+            let isValid = true;
+            const errors = [];
+            for (const fieldName in rules) {
+                const input = form.elements[fieldName];
+                const rule = rules[fieldName];
+                if (rule.required && !input.value.trim()) {
+                    isValid = false;
+                    errors.push(`${rule.label || fieldName} is required.`);
+                }
+            }
+            return { isValid, errors };
+        }
+
+        // === Page-Specific Logic ===
+        document.addEventListener('DOMContentLoaded', () => {
+            // Render Header & Footer
+            const headerElement = document.getElementById('main-header');
+            if (headerElement) {
+                headerElement.innerHTML = `<div class="container"><h1><a href="index.html">Feedback System</a></h1><nav><ul><li><a href="index.html">Home</a></li></ul></nav></div>`;
+            }
+            const footerElement = document.getElementById('main-footer');
+            if (footerElement) {
+                footerElement.innerHTML = `<div class="container"><p>&copy; ${new Date().getFullYear()} Faculty Feedback System. All rights reserved.</p></div>`;
+            }
+
+            // Setup Form Submission
+            const loginForm = document.getElementById('studentLoginForm');
+            const messageElementId = 'login-message';
+
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const formData = {
+                    roll_number: loginForm.elements.roll_number.value,
+                    password: loginForm.elements.password.value,
+                };
+
+                const validationRules = {
+                    roll_number: { required: true, label: 'Roll Number' },
+                    password: { required: true, label: 'Password' },
+                };
+                
+                const { isValid, errors } = validateForm(loginForm, validationRules);
+
+                if (!isValid) {
+                    showMessage(messageElementId, errors.join('<br>'), 'error');
+                    return;
+                }
+
+                try {
+                    const response = await apiCall('/student/login', 'POST', formData);
+                    if (response.status === 'success') {
+                        setSessionData('student_id', response.student_id);
+                        showMessage(messageElementId, response.message + ' Redirecting...', 'success');
+                        setTimeout(() => {
+                            window.location.href = 'student_dashboard.html';
+                        }, 1000);
+                    } else {
+                        showMessage(messageElementId, response.message || 'Login failed.', 'error');
+                    }
+                } catch (error) {
+                    showMessage(messageElementId, error.message || 'An unexpected error occurred.', 'error');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+

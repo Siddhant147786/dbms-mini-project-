@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <header id="main-header"></header>
+
+    <main class="container">
+        <h2>Your Assigned Subjects & Teachers</h2>
+        <div id="dashboard-message" class="message" style="display:none;"></div>
+
+        <div id="teachers-list" class="card-grid">
+            <p id="loading-message">Loading your assigned courses...</p>
+        </div>
+        <p id="no-assignments-message" class="text-center" style="display:none;">No subjects or teachers assigned to you yet.</p>
+    </main>
+
+    <footer id="main-footer"></footer>
+
+    <!-- All necessary JavaScript is now included directly in this file -->
+    <script>
+        // === Configuration ===
+        const API_BASE_URL = 'http://127.0.0.1:5000';
+
+        // === Utility Functions (self-contained and robust) ===
+        function getSessionData(key) {
+            const data = localStorage.getItem(key);
+            // THIS FUNCTION IS NOW MORE ROBUST: It checks for invalid data before parsing.
+            if (data && data !== 'undefined' && data !== 'null') {
+                try {
+                    return JSON.parse(data);
+                } catch (e) {
+                    console.error(`Error parsing JSON from localStorage for key "${key}":`, e);
+                    return null;
+                }
+            }
+            return null;
+        }
+
+        function removeSessionData(key) {
+            localStorage.removeItem(key);
+        }
+
+        function showMessage(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.innerHTML = message;
+                element.className = `message ${type}`;
+                element.style.display = 'block';
+                setTimeout(() => { element.style.display = 'none'; }, 5000);
+            }
+        }
+
+        async function apiCall(endpoint, method = 'GET', data = null) {
+            const options = {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include'
+            };
+            if (data) {
+                options.body = JSON.stringify(data);
+            }
+            try {
+                const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error("API Call failed:", error);
+                throw error;
+            }
+        }
+
+        // === Page-Specific Logic ===
+        document.addEventListener('DOMContentLoaded', async () => {
+            // 1. Authentication Check
+            if (!getSessionData('student_id')) {
+                alert('You must be logged in as a student to view this page.');
+                window.location.href = 'student_login.html';
+                return;
+            }
+
+            // 2. Render Header & Footer
+            const headerElement = document.getElementById('main-header');
+            if (headerElement) {
+                headerElement.innerHTML = `
+                    <div class="container">
+                        <h1><a href="index.html">Feedback System</a></h1>
+                        <nav><ul>
+                            <li><a href="index.html">Home</a></li>
+                            <li><a href="student_dashboard.html">Student Dashboard</a></li>
+                            <li><a href="#" id="logout-button">Logout</a></li>
+                        </ul></nav>
+                    </div>`;
+                document.getElementById('logout-button').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    removeSessionData('student_id');
+                    window.location.href = 'index.html';
+                });
+            }
+            const footerElement = document.getElementById('main-footer');
+            if (footerElement) {
+                footerElement.innerHTML = `<div class="container"><p>&copy; ${new Date().getFullYear()} Faculty Feedback System. All rights reserved.</p></div>`;
+            }
+            
+            // 3. Get DOM Elements and Fetch Data
+            const teachersListDiv = document.getElementById('teachers-list');
+            const loadingMessage = document.getElementById('loading-message');
+            const noAssignmentsMessage = document.getElementById('no-assignments-message');
+            const messageElementId = 'dashboard-message';
+
+            try {
+                const assignments = await apiCall('/student/dashboard', 'GET');
+                loadingMessage.style.display = 'none';
+
+                if (assignments && assignments.length > 0) {
+                    teachersListDiv.innerHTML = '';
+                    assignments.forEach(assignment => {
+                        const card = document.createElement('div');
+                        card.classList.add('card');
+                        card.innerHTML = `
+                            <h3>${assignment.subject_name}</h3>
+                            <p><strong>Teacher:</strong> ${assignment.teacher_name}</p>
+                            <p><strong>Subject Code:</strong> ${assignment.subject_code}</p>
+                            <a href="student_feedback.html?assignment_id=${assignment.assignment_id}&subject_name=${encodeURIComponent(assignment.subject_name)}&teacher_name=${encodeURIComponent(assignment.teacher_name)}" class="button primary button-full-width">Give Feedback</a>
+                        `;
+                        teachersListDiv.appendChild(card);
+                    });
+                } else {
+                    noAssignmentsMessage.style.display = 'block';
+                }
+            } catch (error) {
+                loadingMessage.style.display = 'none';
+                showMessage(messageElementId, error.message || 'Failed to load dashboard data. Please try again.', 'error');
+            }
+        });
+    </script>
+</body>
+</html>
+

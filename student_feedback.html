@@ -1,0 +1,200 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submit Feedback</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <header id="main-header"></header>
+
+    <main class="container">
+        <div class="form-container">
+            <h2 id="feedback-title">Submit Feedback</h2>
+            <p>For: <strong id="subject-info"></strong> by <strong id="teacher-info"></strong></p>
+            <div id="feedback-message" class="message" style="display:none;"></div>
+            <form id="feedbackForm">
+                <div class="form-group">
+                    <label>Knowledge:</label>
+                    <div class="rating-group">
+                        <input type="radio" id="knowledge5" name="rating_knowledge" value="5" required><label for="knowledge5">5</label>
+                        <input type="radio" id="knowledge4" name="rating_knowledge" value="4"><label for="knowledge4">4</label>
+                        <input type="radio" id="knowledge3" name="rating_knowledge" value="3"><label for="knowledge3">3</label>
+                        <input type="radio" id="knowledge2" name="rating_knowledge" value="2"><label for="knowledge2">2</label>
+                        <input type="radio" id="knowledge1" name="rating_knowledge" value="1"><label for="knowledge1">1</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Communication:</label>
+                    <div class="rating-group">
+                        <input type="radio" id="communication5" name="rating_communication" value="5" required><label for="communication5">5</label>
+                        <input type="radio" id="communication4" name="rating_communication" value="4"><label for="communication4">4</label>
+                        <input type="radio" id="communication3" name="rating_communication" value="3"><label for="communication3">3</label>
+                        <input type="radio" id="communication2" name="rating_communication" value="2"><label for="communication2">2</label>
+                        <input type="radio" id="communication1" name="rating_communication" value="1"><label for="communication1">1</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Punctuality:</label>
+                    <div class="rating-group">
+                        <input type="radio" id="punctuality5" name="rating_punctuality" value="5" required><label for="punctuality5">5</label>
+                        <input type="radio" id="punctuality4" name="rating_punctuality" value="4"><label for="punctuality4">4</label>
+                        <input type="radio" id="punctuality3" name="rating_punctuality" value="3"><label for="punctuality3">3</label>
+                        <input type="radio" id="punctuality2" name="rating_punctuality" value="2"><label for="punctuality2">2</label>
+                        <input type="radio" id="punctuality1" name="rating_punctuality" value="1"><label for="punctuality1">1</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Overall Rating:</label>
+                    <div class="rating-group">
+                        <input type="radio" id="overall5" name="rating_overall" value="5" required><label for="overall5">5</label>
+                        <input type="radio" id="overall4" name="rating_overall" value="4"><label for="overall4">4</label>
+                        <input type="radio" id="overall3" name="rating_overall" value="3"><label for="overall3">3</label>
+                        <input type="radio" id="overall2" name="rating_overall" value="2"><label for="overall2">2</label>
+                        <input type="radio" id="overall1" name="rating_overall" value="1"><label for="overall1">1</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="comment">Comment (Optional):</label>
+                    <textarea id="comment" name="comment" rows="4"></textarea>
+                </div>
+                <button type="submit" class="button primary button-full-width">Submit Feedback</button>
+            </form>
+        </div>
+    </main>
+
+    <footer id="main-footer"></footer>
+
+    <script>
+        // === Configuration ===
+        const API_BASE_URL = 'http://127.0.0.1:5000';
+
+        // === Utility Functions (self-contained and robust) ===
+        function getSessionData(key) {
+            const data = localStorage.getItem(key);
+            if (data && data !== 'undefined' && data !== 'null') {
+                try {
+                    return JSON.parse(data);
+                } catch (e) {
+                    return null;
+                }
+            }
+            return null;
+        }
+
+        function removeSessionData(key) {
+            localStorage.removeItem(key);
+        }
+
+        function showMessage(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.innerHTML = message;
+                element.className = `message ${type}`;
+                element.style.display = 'block';
+                setTimeout(() => { element.style.display = 'none'; }, 5000);
+            }
+        }
+
+        async function apiCall(endpoint, method = 'GET', data = null) {
+            const options = {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include'
+            };
+            if (data) {
+                options.body = JSON.stringify(data);
+            }
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+            }
+            return await response.json();
+        }
+
+        // === Page-Specific Logic ===
+        document.addEventListener('DOMContentLoaded', () => {
+            // 1. Authentication Check
+            if (!getSessionData('student_id')) {
+                alert('You must be logged in as a student to give feedback.');
+                window.location.href = 'student_login.html';
+                return;
+            }
+
+            // 2. Render Header & Footer
+            const headerElement = document.getElementById('main-header');
+            if (headerElement) {
+                headerElement.innerHTML = `
+                    <div class="container">
+                        <h1><a href="index.html">Feedback System</a></h1>
+                        <nav><ul>
+                            <li><a href="index.html">Home</a></li>
+                            <li><a href="student_dashboard.html">Student Dashboard</a></li>
+                            <li><a href="#" id="logout-button">Logout</a></li>
+                        </ul></nav>
+                    </div>`;
+                document.getElementById('logout-button').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    removeSessionData('student_id');
+                    window.location.href = 'index.html';
+                });
+            }
+            const footerElement = document.getElementById('main-footer');
+            if (footerElement) {
+                footerElement.innerHTML = `<div class="container"><p>&copy; ${new Date().getFullYear()} Faculty Feedback System. All rights reserved.</p></div>`;
+            }
+
+            // 3. Get URL Parameters and Setup Form
+            const urlParams = new URLSearchParams(window.location.search);
+            const assignmentId = urlParams.get('assignment_id');
+            const subjectName = urlParams.get('subject_name');
+            const teacherName = urlParams.get('teacher_name');
+            const messageElementId = 'feedback-message';
+
+            if (!assignmentId) {
+                showMessage(messageElementId, 'Assignment ID is missing. Cannot submit feedback.', 'error');
+                return;
+            }
+
+            document.getElementById('subject-info').textContent = subjectName || 'N/A';
+            document.getElementById('teacher-info').textContent = teacherName || 'N/A';
+
+            const feedbackForm = document.getElementById('feedbackForm');
+            feedbackForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const formData = {
+                    rating_knowledge: parseInt(document.querySelector('input[name="rating_knowledge"]:checked')?.value),
+                    rating_communication: parseInt(document.querySelector('input[name="rating_communication"]:checked')?.value),
+                    rating_punctuality: parseInt(document.querySelector('input[name="rating_punctuality"]:checked')?.value),
+                    rating_overall: parseInt(document.querySelector('input[name="rating_overall"]:checked')?.value),
+                    comment: document.getElementById('comment').value,
+                };
+
+                if (Object.values(formData).slice(0, 4).some(val => isNaN(val))) {
+                    showMessage(messageElementId, 'Please provide a rating for all categories.', 'error');
+                    return;
+                }
+
+                try {
+                    const response = await apiCall(`/student/feedback/${assignmentId}`, 'POST', formData);
+                    if (response.status === 'success') {
+                        showMessage(messageElementId, response.message + ' Redirecting...', 'success');
+                        setTimeout(() => {
+                            window.location.href = 'student_dashboard.html';
+                        }, 2000);
+                    } else {
+                        showMessage(messageElementId, response.message || 'Feedback submission failed.', 'error');
+                    }
+                } catch (error) {
+                    showMessage(messageElementId, error.message || 'An unexpected error occurred.', 'error');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

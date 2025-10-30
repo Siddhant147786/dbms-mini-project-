@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Summary</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <!-- Chart.js for analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <header id="main-header"></header>
+
+    <main class="container">
+        <h2 id="summary-title">Teacher Feedback Summary</h2>
+        <div id="summary-message" class="message" style="display:none;"></div>
+
+        <div id="teacher-details">
+            <p><strong>Teacher:</strong> <span id="teacher-name-display">Loading...</span></p>
+            <p><strong>Selected Branch:</strong> <span id="branch-display">Loading...</span></p>
+            <p><strong>Selected Year:</strong> <span id="year-display">Loading...</span></p>
+            <p><strong>Selected Semester:</strong> <span id="semester-display">Loading...</span></p>
+            <p><strong>Total Feedbacks:</strong> <span id="total-feedbacks-display">0</span></p>
+        </div>
+
+        <div class="card-grid" style="margin-top: 30px;">
+            <div class="card">
+                <h3>Average Ratings</h3>
+                <p><strong>Overall:</strong> <span id="avg-overall">N/A</span></p>
+                <p><strong>Knowledge:</strong> <span id="avg-knowledge">N/A</span></p>
+                <p><strong>Communication:</strong> <span id="avg-communication">N/A</span></p>
+                <p><strong>Punctuality:</strong> <span id="avg-punctuality">N/A</span></p>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h3>Rating Distribution</h3>
+            <canvas id="ratingBarChart"></canvas>
+        </div>
+
+        <div class="chart-container">
+            <h3>Overall Rating Breakdown</h3>
+            <canvas id="overallPieChart"></canvas>
+        </div>
+
+        <p class="text-center mt-30"><a href="admin_dashboard.html" class="button secondary">Back to Admin Dashboard</a></p>
+    </main>
+
+    <footer id="main-footer"></footer>
+
+    <script src="assets/js/script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            renderHeader(true); // Show logout button
+            renderFooter();
+
+            if (!checkAuth('admin')) return; // Redirect if not logged in
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const teacherId = urlParams.get('teacher_id');
+            const branchId = urlParams.get('branch_id');
+            const yearId = urlParams.get('year_id');
+            const semesterId = urlParams.get('semester_id');
+            const teacherName = urlParams.get('teacher_name');
+            const messageElementId = 'summary-message';
+
+            if (!teacherId) {
+                showMessage(messageElementId, 'Teacher ID is missing. Cannot display summary.', 'error');
+                return;
+            }
+
+            document.getElementById('teacher-name-display').textContent = teacherName || `Teacher ID: ${teacherId}`;
+
+            // Fetch and display dropdown data for selected filters
+            try {
+                const dropdownData = await fetchDropdownData();
+                document.getElementById('branch-display').textContent = dropdownData.branches.find(b => b.id == branchId)?.name || 'All';
+                document.getElementById('year-display').textContent = dropdownData.years.find(y => y.id == yearId)?.label || 'All';
+                document.getElementById('semester-display').textContent = dropdownData.semesters.find(s => s.id == semesterId)?.label || 'All';
+            } catch (error) {
+                console.error("Failed to load dropdown data for summary page:", error);
+                document.getElementById('branch-display').textContent = `ID: ${branchId}`;
+                document.getElementById('year-display').textContent = `ID: ${yearId}`;
+                document.getElementById('semester-display').textContent = `ID: ${semesterId}`;
+            }
+
+            try {
+                const summaryData = await apiCall(`/admin/teacher/${teacherId}/summary?branch_id=${branchId}&year_id=${yearId}&semester_id=${semesterId}`, 'GET');
+
+                if (summaryData && summaryData.length > 0) {
+                    const summary = summaryData[0];
+                    document.getElementById('total-feedbacks-display').textContent = summary.total_feedbacks || 0;
+                    document.getElementById('avg-overall').textContent = summary.avg_overall ? summary.avg_overall.toFixed(2) : 'N/A';
+                    document.getElementById('avg-knowledge').textContent = summary.avg_knowledge ? summary.avg_knowledge.toFixed(2) : 'N/A';
+                    document.getElementById('avg-communication').textContent = summary.avg_communication ? summary.avg_communication.toFixed(2) : 'N/A';
+                    document.getElementById('avg-punctuality').textContent = summary.avg_punctuality ? summary.avg_punctuality.toFixed(2) : 'N/A';
+
+                    renderCharts(summary);
+
+                } else {
+                    showMessage(messageElementId, 'No summary data found for this teacher with the selected filters.', 'info');
+                    // Clear chart containers or display "No Data" messages
+                    document.getElementById('ratingBarChart').style.display = 'none';
+                    document.getElementById('overallPieChart').style.display = 'none';
+                }
+
+            } catch (error) {
+                showMessage(messageElementId, error.message || 'Error loading teacher summary data.', 'error');
+                document.getElementById('teacher-details').innerHTML = '<p class="message error">Failed to load teacher summary.</p>';
+            }
+        });
+
+        function renderCharts(summary) {
+            // Placeholder data for chart demo. In a real system, you'd fetch this breakdown from the backend.
+            // For now, let's derive it simplistically or assume a distribution.
+            const total = summary.total_feedbacks;
+            if (total === 0) return;
+
+            // Example: For Bar Chart (Avg Ratings per Category)
+            const ctxBar = document.getElementById('ratingBarChart').getContext('2d');
+            new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: ['Knowledge', 'Communication', 'Punctuality', 'Overall'],
+                    datasets: [{
+                        label: 'Average Rating (1-5)',
+                        data: [summary.avg_knowledge, summary.avg_communication, summary.avg_punctuality, summary.avg_overall],
+                        backgroundColor: [
+                            'rgba(75, 192, 192, 0.6)',
+                            'rgba(153, 102, 255, 0.6)',
+                            'rgba(255, 159, 64, 0.6)',
+                            'rgba(54, 162, 235, 0.6)'
+                        ],
+                        borderColor: [
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(153, 102, 255, 1)',
+                            'rgba(255, 159, 64, 1)',
+                            'rgba(54, 162, 235, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 5,
+                            title: {
+                                display: true,
+                                text: 'Average Rating'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Average Ratings Across Categories'
+                        }
+                    }
+                }
+            });
+
+            // Example: For Pie Chart (Overall Rating Distribution)
+            // This would ideally come from the backend, e.g., counts of 1-star, 2-star, etc.
+            // For demonstration, let's create some dummy distribution based on avg_overall
+            const overallRating = summary.avg_overall;
+            let ratingCounts = [0,0,0,0,0]; // For 1,2,3,4,5 stars
+
+            // Very simplistic distribution logic for demo purposes:
+            if (overallRating >= 4.5) { ratingCounts = [5,10,15,30,40]; } // mostly 4s and 5s
+            else if (overallRating >= 3.5) { ratingCounts = [10,15,25,30,20]; } // mostly 3s and 4s
+            else if (overallRating >= 2.5) { ratingCounts = [20,25,30,15,10]; } // mostly 2s and 3s
+            else { ratingCounts = [30,25,20,15,10]; } // mostly 1s and 2s
+
+            const ctxPie = document.getElementById('overallPieChart').getContext('2d');
+            new Chart(ctxPie, {
+                type: 'pie',
+                data: {
+                    labels: ['1 Star', '2 Stars', '3 Stars', '4 Stars', '5 Stars'],
+                    datasets: [{
+                        label: 'Overall Rating Distribution',
+                        data: ratingCounts, // This data should ideally come from backend
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.7)', // Red for 1 star
+                            'rgba(255, 159, 64, 0.7)', // Orange for 2 stars
+                            'rgba(255, 205, 86, 0.7)', // Yellow for 3 stars
+                            'rgba(75, 192, 192, 0.7)', // Green for 4 stars
+                            'rgba(54, 162, 235, 0.7)'  // Blue for 5 stars
+                        ],
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Overall Rating Distribution'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += context.parsed + '%';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
